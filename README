@@ -1,0 +1,11 @@
+0. create a bot using bot father 
+1. clone git
+2. create .env file
+3. add environment variable TOKEN=your-bot-token-here
+4. run terminal: go run main.go
+5. open telegram
+6. looking for you bot
+7. start chat with your bot or /start
+8. /connect then input dbstring
+9. starting query sql (ex: /query select * from users where username like 'thinhphoenix')
+10. enjoy
