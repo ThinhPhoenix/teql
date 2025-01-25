@@ -9,4 +9,4 @@
 8. /connect then input dbstring
 9. starting query sql (ex: /query select * from users where username like 'thinhphoenix')
 10. enjoy
-![alt text](https://github.com/ThinhPhoenix/teql/blob/main/image.png)
+![alt text](https://raw.githubusercontent.com/ThinhPhoenix/teql/refs/heads/main/image.png)
