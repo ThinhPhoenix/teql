@@ -179,7 +179,7 @@ func main() {
 				query := update.Message.CommandArguments()
 				if query == "" {
 					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
-						"error: /query [sql query here].")
+						"error: /query 〔sql query here〕.")
 					bot.Send(errMsg)
 					continue
 				}
