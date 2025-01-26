@@ -99,7 +99,7 @@ func executeQuery(query string) (string, error) {
 func main() {
 	var token = os.Getenv("TOKEN")
 	if token == "" {
-	    log.Fatal("Missing TOKEN environment variable")
+		log.Fatal("missing token environment variable")
 	}
 
 	// Replace with your Telegram Bot Token
@@ -109,7 +109,7 @@ func main() {
 	}
 
 	bot.Debug = true
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	log.Printf("authorized on account %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -127,16 +127,16 @@ func main() {
 			switch update.Message.Command() {
 			case "start":
 				helpMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
-					"*𝖙𝖊𝖖𝖑* 🫠\n\n"+
-						"`Các chức năng:`\n"+
-						"*/connect*\n"+
+					"*𝖙𝖊𝖖𝖑* 🫠\n\n"+ 
+						"`all functions:`\n"+ 
+						"*/connect*\n"+ 
 						"*/query* `〔SQL Query〕`")
 				helpMsg.ParseMode = tgbotapi.ModeMarkdown
 				bot.Send(helpMsg)
 
 			case "connect":
 				// Ask the user to enter the connection string
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Hãy nhập chuỗi cơ sở dữ liệu.")
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "enter database connection string.")
 				bot.Send(msg)
 
 				// Wait for the user's response (connection string)
@@ -144,7 +144,7 @@ func main() {
 
 				connStr := update.Message.Text
 				if connStr == "" {
-					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "Chuỗi kết nối không hợp lệ. Vui lòng thử lại.")
+					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "database connection string is not valid.")
 					bot.Send(errMsg)
 					continue
 				}
@@ -159,7 +159,7 @@ func main() {
 				case strings.Contains(connStr, "sqlserver://") || strings.Contains(connStr, "server="):
 					driver = "sqlserver"
 				default:
-					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "Database không được hỗ trợ. Vui lòng thử lại với PostgreSQL, MySQL hoặc SQL Server.")
+					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "unsupport database.")
 					bot.Send(errMsg)
 					continue
 				}
@@ -167,7 +167,7 @@ func main() {
 				// Test the connection
 				err := testConnection(driver, connStr)
 				if err != nil {
-					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Lỗi kết nối: %v", err))
+					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("connect error: %v", err))
 					bot.Send(errMsg)
 					continue
 				}
@@ -177,14 +177,14 @@ func main() {
 				currentConnStr = connStr
 
 				// Confirm connection
-				msg = tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Đã kết nối thành công database: %s", strings.ToUpper(driver)))
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("connected: %s", strings.ToLower(driver)))
 				bot.Send(msg)
 
 			case "query":
 				query := update.Message.CommandArguments()
 				if query == "" {
 					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
-						"Hãy nhập lệnh truy vấn.")
+						"error: /query [sql query here].")
 					bot.Send(errMsg)
 					continue
 				}
@@ -193,7 +193,7 @@ func main() {
 				result, err := executeQuery(query)
 				if err != nil {
 					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
-						fmt.Sprintf("Lỗi xảy ra: %v", err))
+						fmt.Sprintf("error: %v", err))
 					bot.Send(errMsg)
 					continue
 				}
@@ -204,54 +204,9 @@ func main() {
 
 			default:
 				helpMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
-					"Rất tiếc, bạn đã gặp lỗi khi sử dụng chức năng này. Hãy thử nhập /start để xem hướng dẫn sử dụng.")
+					"error, using /start to know.")
 				bot.Send(helpMsg)
 			}
-		}
-
-		// Handle the connection string input
-		if waitForConnStr && update.Message.Text != "" {
-			// Store the provided connection string
-			connStr := update.Message.Text
-			if connStr == "" {
-				errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "Chuỗi kết nối không hợp lệ.")
-				bot.Send(errMsg)
-				continue
-			}
-
-			// Determine database driver based on connection string
-			var driver string
-			switch {
-			case strings.Contains(connStr, "postgresql://") || strings.Contains(connStr, "postgres://"):
-				driver = "postgres"
-			case strings.Contains(connStr, "@tcp("):
-				driver = "mysql"
-			case strings.Contains(connStr, "sqlserver://") || strings.Contains(connStr, "server="):
-				driver = "sqlserver"
-			default:
-				errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, "Database không được hỗ trợ")
-				bot.Send(errMsg)
-				continue
-			}
-
-			// Test the connection
-			err := testConnection(driver, connStr)
-			if err != nil {
-				errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Lỗi kết nối: %v", err))
-				bot.Send(errMsg)
-				continue
-			}
-
-			// Store connection details
-			currentDriver = driver
-			currentConnStr = connStr
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID,
-				fmt.Sprintf("Đã kết nối thành công database: %s", strings.ToUpper(driver)))
-			bot.Send(msg)
-
-			// Reset the flag
-			waitForConnStr = false
 		}
 	}
 }
