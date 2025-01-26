@@ -10,7 +10,6 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -98,12 +97,10 @@ func executeQuery(query string) (string, error) {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	var token = os.Getenv("TOKEN")
+	if token == "" {
+	    log.Fatal("Missing TOKEN environment variable")
 	}
-
-	token := os.Getenv("TOKEN")
 
 	// Replace with your Telegram Bot Token
 	bot, err := tgbotapi.NewBotAPI(token)
