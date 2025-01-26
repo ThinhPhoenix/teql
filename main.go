@@ -17,7 +17,6 @@ import (
 var (
 	currentDriver  string
 	currentConnStr string
-	waitForConnStr bool
 )
 
 func testConnection(driver, connStr string) error {
