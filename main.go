@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"net/http"
 
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
@@ -16,7 +17,7 @@ import (
 var (
 	currentDriver  string
 	currentConnStr string
-	waitForConnStr bool // Flag to indicate if we're waiting for a connection string
+	waitForConnStr bool
 )
 
 func testConnection(driver, connStr string) error {
@@ -34,44 +35,35 @@ func executeQuery(query string) (string, error) {
 		return "", fmt.Errorf("no database connection established. Use /connect first")
 	}
 
-	// Open database connection
 	db, err := sql.Open(currentDriver, currentConnStr)
 	if err != nil {
 		return "", fmt.Errorf("connection error: %v", err)
 	}
 	defer db.Close()
 
-	// Execute query
 	rows, err := db.Query(query)
 	if err != nil {
 		return "", fmt.Errorf("query error: %v", err)
 	}
 	defer rows.Close()
 
-	// Get column names
 	columns, err := rows.Columns()
 	if err != nil {
 		return "", fmt.Errorf("columns error: %v", err)
 	}
 
-	// Prepare a slice to hold the rows
 	var result []map[string]interface{}
-
-	// Scan rows
 	for rows.Next() {
-		// Create a slice of interface{} to hold row values
 		vals := make([]interface{}, len(columns))
 		valPtrs := make([]interface{}, len(columns))
 		for i := range columns {
 			valPtrs[i] = &vals[i]
 		}
 
-		// Scan row values
 		if err := rows.Scan(valPtrs...); err != nil {
 			return "", fmt.Errorf("scan error: %v", err)
 		}
 
-		// Create a map to hold column-value pairs
 		rowMap := make(map[string]interface{})
 		for i, val := range vals {
 			if val == nil {
@@ -80,11 +72,9 @@ func executeQuery(query string) (string, error) {
 				rowMap[columns[i]] = val
 			}
 		}
-		// Append row map to the result slice
 		result = append(result, rowMap)
 	}
 
-	// Format the result into the requested output style
 	var sb strings.Builder
 	for _, row := range result {
 		for key, value := range row {
@@ -102,7 +92,6 @@ func main() {
 		log.Fatal("missing token environment variable")
 	}
 
-	// Replace with your Telegram Bot Token
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
@@ -114,32 +103,42 @@ func main() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	// Start receiving updates
 	updates := bot.GetUpdatesChan(u)
+
+	// Bind to the port set by Render
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback port if PORT is not set
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Bot is running")
+	})
+
+	go func() {
+		log.Fatal(http.ListenAndServe(":"+port, nil))
+	}()
 
 	for update := range updates {
 		if update.Message == nil {
 			continue
 		}
 
-		// Check for command
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
 			case "start":
 				helpMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
-					"*𝖙𝖊𝖖𝖑* 🫠\n\n"+ 
-						"`all functions:`\n"+ 
-						"*/connect*\n"+ 
+					"*𝖙𝖊𝖖𝖑* 🫠\n\n"+
+						"`all functions:`\n"+
+						"*/connect*\n"+
 						"*/query* `〔SQL Query〕`")
 				helpMsg.ParseMode = tgbotapi.ModeMarkdown
 				bot.Send(helpMsg)
 
 			case "connect":
-				// Ask the user to enter the connection string
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "enter database connection string.")
 				bot.Send(msg)
 
-				// Wait for the user's response (connection string)
 				update = <-updates // Get the next update (user input)
 
 				connStr := update.Message.Text
@@ -149,7 +148,6 @@ func main() {
 					continue
 				}
 
-				// Determine database driver based on connection string
 				var driver string
 				switch {
 				case strings.Contains(connStr, "postgresql://") || strings.Contains(connStr, "postgres://"):
@@ -164,7 +162,6 @@ func main() {
 					continue
 				}
 
-				// Test the connection
 				err := testConnection(driver, connStr)
 				if err != nil {
 					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("connect error: %v", err))
@@ -172,11 +169,9 @@ func main() {
 					continue
 				}
 
-				// Store connection details
 				currentDriver = driver
 				currentConnStr = connStr
 
-				// Confirm connection
 				msg = tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("connected: %s", strings.ToLower(driver)))
 				bot.Send(msg)
 
@@ -189,7 +184,6 @@ func main() {
 					continue
 				}
 
-				// Execute query
 				result, err := executeQuery(query)
 				if err != nil {
 					errMsg := tgbotapi.NewMessage(update.Message.Chat.ID,
@@ -198,7 +192,6 @@ func main() {
 					continue
 				}
 
-				// Send result back to Telegram
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, result)
 				bot.Send(msg)
 
